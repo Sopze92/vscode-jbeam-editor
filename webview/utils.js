@@ -30,6 +30,8 @@ const faceColors = {
   Back: 0x00ffff     // Cyan
 }
 
+const BYTE_TO_FLOAT= 0.003921568627451
+
 function interpolateColor(color1, color2, factor) {
   return color1.lerp(color2, factor)
 }
@@ -40,6 +42,63 @@ function getContrastingColor(hexcolor) {
   const b = parseInt(hexcolor.slice(5, 7), 16)
   const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000
   return (yiq >= 128) ? 'black' : 'white'
+}
+
+/*
+function getColorFromFloatRGBA(r, g, b, a){
+  //bcolor= { br: THREE.MathUtils.clamp(r*255, 0, 255), bg: THREE.MathUtils.clamp(g*255, 0, 255), bb: THREE.MathUtils.clamp(b*255, 0, 255), ba: THREE.MathUtils.clamp(a*255, 0, 255) }
+  //hex= bcolor.br<<24 | bcolor.bg << 16 | bcolor.bb << 8 | bcolor.ba
+  //return { r, g, b, a, ...bcolor, hex }
+}
+*/
+
+function getColorFromInt(hex){
+  return [ BYTE_TO_FLOAT * hex>>24&0xFF, BYTE_TO_FLOAT * hex>>16&0xFF, BYTE_TO_FLOAT * hex>>8&0xFF, BYTE_TO_FLOAT * hex&0xFF]
+  /*
+  fcolor= { r: BYTE_TO_FLOAT * hex>>24&0xFF, g: BYTE_TO_FLOAT * hex>>16&0xFF, b: BYTE_TO_FLOAT * hex>>8&0xFF, a: BYTE_TO_FLOAT * hex&0xFF }
+  bcolor= { br: hex>>24&0xFF, bg: hex>>16&0xFF, bb: hex>>8&0xFF, ba: hex&0xFF }
+  return { ...fcolor, ...bcolor, hex }
+  */
+}
+
+/** parses a color string, returns a float RGBA array */
+//    HEX: '#' followed by 3/4/6/8 HEX digits, as RGB, RGBA, RRGGBB or RRGGBBAA, ie: #00FF00FF
+//    BYTE: 'b' followed by 3/4 decimal bytes separated by commas as in RRR,GGG,BBB,AAA, ie: b128,255,128,255
+//    FLOAT: 'f' followed by 3/4 float values separated by commas as in R,G,B,A, ie: f0.5,1.0,0.5,1.0
+// returns the given color or 0,0,0,0 if errored
+function parseColor(col) {
+  try {
+    const type= typeof(col)
+    if(type==='string'){
+      let strvalue= col.substring(1)
+      if(col[0]==='#'){
+        const 
+          len= strvalue.length,
+          short= len==3 || len==4
+        if(short){
+          let strduped= ""
+          for(i=0; i<len; i++) strduped+= strvalue[i] + strvalue[i]
+          strvalue= strduped
+        }
+        if(len==6) strvalue+="FF"
+        return getColorFromInt(parseInt(strvalue,16))
+      }
+      else if(strvalue.includes(',')){
+        const 
+          byte= col[0]==='b',
+          colsplit= strvalue.split(','),
+          chn= []
+        for(let i in colsplit) chn.push(THREE.MathUtils.clamp( byte ? BYTE_TO_FLOAT * parseInt(colsplit[i]) : parseFloat(colsplit[i])), 0, 1.0)
+        if(chn.length==3) chn.push(1.0)
+        return chn
+      }
+    }
+    else if(type==='object') return [col.r, col.g, col.b, col.a]
+  }
+  catch(e) {
+    console.log("parseColor() => unable to parse color string:", col)
+  }
+  return [1., 0., 1., 1.] // MAGENTA = error
 }
 
 function roundNumber(num) {
@@ -399,6 +458,13 @@ function getColorFromDistance(distance, maxDistance, colorHexA, colorHexB) {
   let color = new THREE.Color(colorHexB);
   color.lerp(new THREE.Color(colorHexA), normalizedDistance);
   return color;
+}
+
+// takes a 4 parameter color, the 3-component colors of THREE.js are just stupid
+// this one is ONLY being used in visualizers/beam.js and feed with the color array returned by parseColor on this file :64
+function getFullColorFromDistance(dist, maxDist, colorFar, colorClose) {
+  const normDist = Math.min(dist, maxDist) / maxDist
+  return colorFar.map((i,e)=> e= e+colorClose[i]-e*normDist)
 }
 
 class Tooltip {
