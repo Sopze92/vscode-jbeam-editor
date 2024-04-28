@@ -149,24 +149,6 @@
             "description": "Show the parsed data in the hover",
             "order": 5
           },
-          "jbeam-editor.hover.dev.showDocHints": {
-            "type": "boolean",
-            "default": false,
-            "description": "Developer setting: show the keys it looks for in the docs",
-            "order": 90
-          },
-          "jbeam-editor.hover.dev.showFullDevData": {
-            "type": "boolean",
-            "default": false,
-            "description": "Developer setting: Show all data hover, do not clean up",
-            "order": 91
-          },
-          "jbeam-editor.sceneView.meshes.loadByDefault": {
-            "type": "boolean",
-            "default": true,
-            "description": "Load 3D Meshes on startup",
-            "order": 91
-          },
           "jbeam-editor.sceneView.fpsLimit": {
             "type": "number",
             "default": 60,
@@ -186,6 +168,142 @@
             "maximum ": 100,
             "description": "Opacity of the 3D meshes in percent",
             "order": 5
+          },
+          "jbeam-editor.sceneView.jbeam.nodeTextMode": {
+            "type": "string",
+            "default": "off",
+            "enum": ["off", "names", "numbers", "names+number", "weights", "materials", "groups" ],
+            "description": "Node text visualization mode",
+            "order": 10
+          },
+          "jbeam-editor.sceneView.jbeam.nodeTextShowWheels": {
+            "type": "boolean",
+            "default": false,
+            "description": "Render wheel nodes in node text visualization modes",
+            "order": 10
+          },
+          "jbeam-editor.sceneView.jbeam.nodeTextColorize": {
+            "type": "boolean",
+            "default": false,
+            "description": "Use custom colors in node text visualization modes that allow it",
+            "order": 10
+          },
+          "jbeam-editor.sceneView.jbeam.nodeVisMode": {
+            "type": "string",
+            "default": "simple",
+            "enum": ["off", "simple", "color", "weights", "density"],
+            "description": "Node visualization mode",
+            "order": 10
+          },
+          "jbeam-editor.sceneView.jbeam.nodeVisWidthScale": {
+            "type": "number",
+            "default": 1.0,
+            "minimum": 0.1,
+            "maximum": 100.0,
+            "description": "Nodes base scale",
+            "order": 10
+          },
+          "jbeam-editor.sceneView.jbeam.beamTextMode": {
+            "type": "string",
+            "default": "off",
+            "enum": ["off", "ids", "length" ],
+            "description": "Node text visualization mode",
+            "order": 10
+          },
+          "jbeam-editor.sceneView.jbeam.beamTextShowWheels": {
+            "type": "boolean",
+            "default": false,
+            "description": "Render wheel beams in beam text visualization modes",
+            "order": 10
+          },
+          "jbeam-editor.sceneView.jbeam.beamTextColorize": {
+            "type": "boolean",
+            "default": false,
+            "description": "Use custom colors in beam text visualization modes that allow it",
+            "order": 10
+          },
+          "jbeam-editor.sceneView.jbeam.beamVisualizerMode": {
+            "type": "string",
+            "default": "simple",
+            "enum": ["off", "simple", "color", "parts color", "type", "breakgroups", "deformgroups", "limiters" ],
+            "description": "Beams visualization mode",
+            "order": 10
+          },
+          "jbeam-editor.sceneView.jbeam.beamVisualizerWidthScale": {
+            "type": "number",
+            "default": 1.0,
+            "minimum": 0.1,
+            "maximum": 100.0,
+            "description": "Beams base scale",
+            "order": 10
+          },
+          "jbeam-editor.sceneView.jbeam.torsionBarVisualizer": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show torsion bar nodes",
+            "order": 10
+          },
+          "jbeam-editor.sceneView.jbeam.torsionBarVisualizerOpacity": {
+            "type": "number",
+            "default": 0.5,
+            "minimum": 0.1,
+            "maximum": 1.0,
+            "description": "Torsion bar nodes opacity",
+            "order": 10
+          },
+          "jbeam-editor.sceneView.jbeam.railSlideVisualizer": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show rail slide nodes",
+            "order": 10
+          },
+          "jbeam-editor.sceneView.jbeam.railSlideVisualizerOpacity": {
+            "type": "number",
+            "default": 0.5,
+            "minimum": 0.1,
+            "maximum": 1.0,
+            "description": "Rail slide nodes opacity",
+            "order": 10
+          },
+          "jbeam-editor.sceneView.jbeam.collisionTrianglesVisualizerMode": {
+            "type": "string",
+            "default": "off",
+            "enum": ["off", "simple", "color", "face orientation" ],
+            "description": "Collision triangle visualization mode",
+            "order": 10
+          },
+          "jbeam-editor.sceneView.jbeam.collisionTrianglesVisualizerOpacity": {
+            "type": "number",
+            "default": 0.5,
+            "minimum": 0.1,
+            "maximum": 1.0,
+            "description": "Collision triangles opacity",
+            "order": 10
+          },
+          "jbeam-editor.sceneView.jbeam.collisionTrianglesVisualizerFaceMode": {
+            "type": "string",
+            "default": "both",
+            "enum": ["front", "back", "both" ],
+            "description": "Collision triangle face render mode",
+            "order": 10
+          },
+          "jbeam-editor.hover.dev.showDocHints": {
+            "type": "boolean",
+            "default": false,
+            "description": "Developer setting: show the keys it looks for in the docs",
+            "order": 90
+          },
+          "jbeam-editor.hover.dev.showFullDevData": {
+            "type": "boolean",
+            "default": false,
+            "description": "Developer setting: Show all data hover, do not clean up",
+            "order": 91
+          },
+          "jbeam-editor.sceneView.meshes.loadByDefault": {
+            "type": "boolean",
+            "default": true,
+            "description": "Load 3D Meshes on startup",
+            "order": 91
           }
         }
       }

@@ -1,17 +1,17 @@
 let meshLoadingBtn
 let views = [
-  {name: 'Top'   , onActivate() { animateCameraMovement(new THREE.Vector3(0, 10, 0)) }},
-  {name: 'Bottom', onActivate() { animateCameraMovement(new THREE.Vector3(0,-10, 0)) }},
-  {name: 'Left'  , onActivate() { animateCameraMovement(new THREE.Vector3(-10,0, 0)) }},
-  {name: 'Right' , onActivate() { animateCameraMovement(new THREE.Vector3(10, 0, 0)) }},
-  {name: 'Front' , onActivate() { animateCameraMovement(new THREE.Vector3(0, 0, 10)) }},
-  {name: 'Back'  , onActivate() { animateCameraMovement(new THREE.Vector3(0, 0,-10)) }},
-  {name: 'Iso'   , onActivate() { animateCameraMovement(new THREE.Vector3(10,10,10)) }},
+  {name: 'Top'          , onActivate() { animateCameraMovement(new THREE.Vector3(0, 10, 0)) }},
+  {name: 'Bottom'       , onActivate() { animateCameraMovement(new THREE.Vector3(0,-10, 0)) }},
+  {name: 'Left'         , onActivate() { animateCameraMovement(new THREE.Vector3(-10,0, 0)) }},
+  {name: 'Right'        , onActivate() { animateCameraMovement(new THREE.Vector3(10, 0, 0)) }},
+  {name: 'Front'        , onActivate() { animateCameraMovement(new THREE.Vector3(0, 0, 10)) }},
+  {name: 'Back'         , onActivate() { animateCameraMovement(new THREE.Vector3(0, 0,-10)) }},
+  {name: 'Isometric'    , onActivate() { animateCameraMovement(new THREE.Vector3(10,10,10)) }},
 ]
 
 const settings = {
   perspective: true,
-  view: 'Iso',
+  view: 'Isometric',
   meshStats: ''
 }
 
