@@ -107,7 +107,7 @@ function focusNodes(nodesArrToFocus, triggerEditor = true) {
     moveCameraCenter(nodesCenterPos)
   }
 
-  ctx.visualizersGroundplane.redrawGroundPlane(nodesMin, nodesMax, selectedNodeIndices, pointsCache, jbeamData, currentPartName, nodeCounter)
+  ctx.visualizersView.redrawGroundPlane(nodesMin, nodesMax, selectedNodeIndices, pointsCache, jbeamData, currentPartName, nodeCounter)
   updateLabels()
 }
 
@@ -306,7 +306,7 @@ function updateNodeViz(moveCamera) {
     scene.add(pointsObject);
   }
 
-  ctx.visualizersGroundplane.redrawGroundPlane(nodesMin, nodesMax, selectedNodeIndices, pointsCache, jbeamData, currentPartName, nodeCounter)
+  ctx.visualizersView.redrawGroundPlane(nodesMin, nodesMax, selectedNodeIndices, pointsCache, jbeamData, currentPartName, nodeCounter)
 
   updateLabels()
 }

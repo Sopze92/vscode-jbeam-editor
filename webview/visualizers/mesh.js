@@ -5,12 +5,28 @@ let isInSection = false
 let uri = null
 let daeFindfilesDone = false
 let wasLoaded = false
-let defaultMeshOpacity = 1
+
+export const 
+  CFG_MESH_COLOR= 0,
+  CFG_MESH_COLOR_ACTIVE= 1,
+  CFG_WIRE_COLOR= 2,
+  CFG_WIRE_COLOR_ACTIVE= 3,
+  CFG_MESH_OPACITY= 4
+
+const localConfig= Array(5)
 
 // loadedMeshes is in utils
 
 let selectedMeshIndices = null
 let loadedCommonFolders
+
+let _materials
+
+export function forceLoadMeshes() {
+  unloadMeshes()
+  meshLibraryFull = []
+  startLoadingMeshes()
+}
 
 export function startLoadingMeshes() {
   daeFindfilesDone = false
@@ -43,9 +59,9 @@ function onReceiveData(message) {
     meshLibraryFull = [] // clear the library on file change
   }
 
-  //if(meshLoadingEnabled && (ctx?.config?.sceneView?.meshes?.loadByDefault ?? false)) {
-  //  startLoadingMeshes()
-  //}
+  if(meshLoadingEnabled && (ctx?.config?.sceneView?.meshes?.loadByDefault ?? false)) {
+    startLoadingMeshes()
+  }
 }
 
 function tryLoad3dMesh(meshName, onDone) {
@@ -117,11 +133,7 @@ function finalizeMeshes() {
   //console.log('jbeamData = ', jbeamData)
 
   // unload everything first
-  for (let key in loadedMeshes) {
-    scene.remove(loadedMeshes[key]);
-  }
-  loadedMeshes = []
-
+  unloadMeshes()
 
   for (let partName in jbeamData) {
     if(currentPartName && partName !== currentPartName) continue
@@ -139,27 +151,13 @@ function finalizeMeshes() {
           }
           colladaNode.traverse((mesh) => {
             if(mesh && mesh instanceof THREE.Mesh && mesh.geometry) {
-              mesh.material = new THREE.MeshStandardMaterial({
-                color: 0x808080, // Grey color
-                metalness: 0.5,
-                roughness: 0.5,
-                // TODO: FIX transparency between objects
-                transparent: true,
-                //depthWrite: false,
-                //depthTest: true,
-              })
-
+              mesh.material = _materials[0]
               // Create a wireframe geometry from the mesh's geometry
               const wireframe = colladaNode.children.find(child => child instanceof THREE.LineSegments)
               if(!wireframe) {
-                const wireframeGeometry = new THREE.WireframeGeometry(mesh.geometry);
-                const wireframe = new THREE.LineSegments(wireframeGeometry, new THREE.LineBasicMaterial({
-                  color: 0xaaaaaa,
-                  linewidth: 1,
-                  transparent: true,
-                  //depthWrite: false, // TODO: FIX transparency between objects
-                  //depthTest: true,
-                }));
+                const 
+                  wireframeGeometry = new THREE.WireframeGeometry(mesh.geometry),
+                  wireframe = new THREE.LineSegments(wireframeGeometry, _materials[2])
                 mesh.add(wireframe);
               }
             }
@@ -195,22 +193,12 @@ function finalizeMeshes() {
           }
           colladaNode.traverse((mesh) => {
             if(mesh && mesh instanceof THREE.Mesh) {
-              mesh.material = new THREE.MeshStandardMaterial({
-                color: 0x808080, // Grey color
-                metalness: 0.5,
-                roughness: 0.5,
-                // TODO: FIX transparency between objects
-              })
-
-              // Create a wireframe geometry from the mesh's geometry
+              mesh.material = _materials[0]
               const wireframe = colladaNode.children.find(child => child instanceof THREE.LineSegments)
               if(!wireframe) {
-                const wireframeGeometry = new THREE.WireframeGeometry(mesh.geometry);
-                const wireframe = new THREE.LineSegments(wireframeGeometry, new THREE.LineBasicMaterial({
-                  color: 0xaaaaaa,
-                  linewidth: 1,
-                  // TODO: FIX transparency between objects
-                }));
+                const 
+                  wireframeGeometry = new THREE.WireframeGeometry(mesh.geometry),
+                  wireframe = new THREE.LineSegments(wireframeGeometry, _materials[2])
                 wireframe.name = 'prop_wireframe'
                 mesh.add(wireframe);
               }
@@ -266,26 +254,57 @@ function loadMeshShallow(uri, namespace) {
   }, true);
 }
 
+function unloadMeshes(){
+  for (let key in loadedMeshes) {
+    if(loadedMeshes[key].geometry) loadedMeshes[key].geometry.dispose()
+    if(loadedMeshes[key].material) loadedMeshes[key].material.dispose()
+    scene.remove(loadedMeshes[key]);
+  }
+  loadedMeshes = []
+}
+
+function updateMaterialColors(){
+
+  _materials[0].color.set(localConfig[CFG_MESH_COLOR].hex24)
+  _materials[1].color.set(localConfig[CFG_MESH_COLOR_ACTIVE].hex24)
+  _materials[2].color.set(localConfig[CFG_WIRE_COLOR].hex24)
+  _materials[3].color.set(localConfig[CFG_WIRE_COLOR_ACTIVE].hex24)
+
+  _materials[0].opacity= localConfig[CFG_MESH_COLOR].float32[3] * localConfig[CFG_MESH_OPACITY]
+  _materials[1].opacity= localConfig[CFG_MESH_COLOR_ACTIVE].float32[3] * localConfig[CFG_MESH_OPACITY]
+  _materials[2].opacity= localConfig[CFG_WIRE_COLOR].float32[3] * localConfig[CFG_MESH_OPACITY]
+  _materials[3].opacity= localConfig[CFG_WIRE_COLOR_ACTIVE].float32[3] * localConfig[CFG_MESH_OPACITY]
+
+  
+  for(let i=0; i<4; i++) {
+    
+    //console.log(`mat${i}: a: ${localConfig[CFG_MESH_COLOR+i].float32}`)
+    _materials[i].needsUpdate= true
+  }
+
+  //console.log(`alpha: ${localConfig[CFG_MESH_OPACITY]}`)
+}
+
+function updateMaterialSelection() {
+  for (let i = 0; i < loadedMeshes.length; i++) {
+    const colladaNode = loadedMeshes[i]
+    //console.log(colladaNode)
+    if(!colladaNode) continue
+      const
+        selected = selectedMeshIndices ? selectedMeshIndices.includes(i) : false,
+        subMeshWire = colladaNode.children.find(child => child instanceof THREE.LineSegments)
+    //console.log("selection: ", selectedMeshIndices)
+    if(subMeshWire && subMeshWire.material) subMeshWire.material= _materials[selected ? 3 : 2]
+    if(colladaNode.material) colladaNode.material= _materials[selected ? 1 : 0]
+  }
+
+  //console.log(_materials[0])
+}
+
 function focusMeshes(meshesArrToFocus) {
   selectedMeshIndices = meshesArrToFocus
-  for (let i = 0; i < loadedMeshes.length; i++) {
-    const selected = meshesArrToFocus ? meshesArrToFocus.includes(i) : false
-    const colladaNode = loadedMeshes[i]
-    //console.log("focusMeshes > colladaNode", colladaNode)
-    if(!colladaNode) continue
-    const subMeshWire = colladaNode.children.find(child => child instanceof THREE.LineSegments)
-    if(subMeshWire && subMeshWire.material) {
-      subMeshWire.material.color.set(selected ? 0xff69b4 : 0xaaaaaa);
-      subMeshWire.material.opacity = selected ? 1 : defaultMeshOpacity
-      subMeshWire.material.needsUpdate = true
-    }
-    if(colladaNode.material && colladaNode.material) {
-      colladaNode.material.opacity = selected ? 1 : defaultMeshOpacity
-      colladaNode.material.color.set(selected ? 0xff69b4 : 0xaaaaaa);
-      colladaNode.material.needsUpdate = true
-    }
-  }
   if(selectedMeshIndices == []) selectedMeshIndices = null
+  updateMaterialSelection()
 }
 
 function onCursorChangeEditor(message) {
@@ -328,10 +347,10 @@ function onCursorChangeEditor(message) {
   focusMeshes(meshesFound, false)
 }
 
-
 function onReceiveMessage(event) {
   //console.log(">>> meshVisuals.onReceiveMessage >>>", event)
   const message = event.data;
+  //console.log("------ received message command:", message.command)
   switch (message.command) {
     case 'jbeamData':
       onReceiveData(message);
@@ -352,7 +371,38 @@ function onReceiveMessage(event) {
 }
 
 export function init() {
-  defaultMeshOpacity = (ctx?.config?.sceneView?.meshes?.opacity ?? 100) / 100
+
+  const _matParamsMesh= {
+    metalness: 0.6,
+    roughness: 0.3,
+    side: THREE.FrontSide,
+    transparent: true,
+    // use alphaHash to solve z-sorting problems, (dithering alpha, like the mesh opacity in BeamNG)
+    alphaHash: true,
+    //premultipliedAlpha: meshOpacity < 1.0,
+    //blending: meshOpacity < 1.0 ? THREE.CustomBlending : THREE.NormalBlending,
+    // unused unless blending= THREE.CustomBlending
+    //blendEquation: THREE.AddEquation,
+    //blendSrc: THREE.SrcAlphaFactor,
+    //blendDst: THREE.OneMinusSrcAlphaFactor
+  }
+
+  const _matParamsWire= {
+    transparent: true,
+    premultipliedAlpha: true,
+    linewidth: 1
+  }
+
+  _materials= [
+    new THREE.MeshStandardMaterial({ ..._matParamsMesh }),   // mesh
+    new THREE.MeshStandardMaterial({ ..._matParamsMesh }),   // mesh selected
+    new THREE.LineBasicMaterial({ ..._matParamsWire }),      // wire
+    new THREE.LineBasicMaterial({ ..._matParamsWire })       // wire selected
+  ]
+
+  // force load default config from vscode
+  onConfigChanged()
+
   window.addEventListener('message', onReceiveMessage);
 }
 
@@ -367,17 +417,36 @@ export function dispose() {
   window.removeEventListener('message', onReceiveMessage);
 }
 
+function onLocalConfigChanged() {
+  updateMaterialColors()
+}
+
 export function onConfigChanged() {
   //console.log('mesh.onConfigChanged', ctx.config)
 
-  defaultMeshOpacity = (ctx?.config?.sceneView?.meshes?.opacity ?? 100) / 100
+  const meshes= ctx?.config?.sceneView?.meshes?? null
 
-  const shoudlLoadCommonFolder = (ctx?.config?.sceneView?.meshes?.loadCommonFolder ?? false)
+  localConfig[CFG_MESH_COLOR]= parseColor(meshes?.color ?? "#a2a2a2")
+  localConfig[CFG_MESH_COLOR_ACTIVE]= parseColor(meshes?.colorSelected ?? "#ccb387")
+  localConfig[CFG_WIRE_COLOR]= parseColor(meshes?.wire ?? "#181818")
+  localConfig[CFG_WIRE_COLOR_ACTIVE]= parseColor(meshes?.wireSelected ?? "#f78f2c")
+  localConfig[CFG_MESH_OPACITY]= (meshes?.meshOpacity ?? 50.0) * .01
+
+  const shoudlLoadCommonFolder = (meshes?.loadCommonFolder ?? false)
   if(shoudlLoadCommonFolder !== loadedCommonFolders) {
     // changed, lets reload the meshes
     startLoadingMeshes()
   }
 
   // update meshes
-  focusMeshes(selectedMeshIndices)
+  onLocalConfigChanged()
+}
+
+export function setConfigParameter(index, value) {
+  index= index | 0
+  if(index < localConfig.length) {
+    localConfig[index]= value
+    //console.log(`mesh.setConfigParameter(): index=${index}, value=`, value)
+    onLocalConfigChanged()
+  }
 }

@@ -179,6 +179,30 @@
             "description": "Load common vehicle folder meshes. Warning: slow, as there is a lot of data!",
             "order": 5
           },
+          "jbeam-editor.sceneView.meshes.color": {
+            "type": "string",
+            "default": "#AAAAAA",
+            "description": "3D Mesh color in hex (#RGB, #RRGGBB)",
+            "order": 5
+          },
+          "jbeam-editor.sceneView.meshes.colorSelected": {
+            "type": "string",
+            "default": "#FF69B4",
+            "description": "Selected 3D Mesh color in hex (#RGB, #RRGGBB)",
+            "order": 5
+          },
+          "jbeam-editor.sceneView.meshes.wire": {
+            "type": "string",
+            "default": "#EEEEEE",
+            "description": "3D Mesh Wireframe color in hex (#RGB, #RRGGBB)",
+            "order": 5
+          },
+          "jbeam-editor.sceneView.meshes.wireSelected": {
+            "type": "string",
+            "default": "#FFCCFF",
+            "description": "Selected 3D Mesh Wireframe color in hex (#RGB, #RRGGBB)",
+            "order": 5
+          },
           "jbeam-editor.sceneView.meshes.opacity": {
             "type": "number",
             "default": 50,

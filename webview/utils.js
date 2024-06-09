@@ -30,6 +30,10 @@ const faceColors = {
   Back: 0x00ffff     // Cyan
 }
 
+const 
+  BYTE_TO_FLOAT= 0.003921568627451,
+  NULL_COLOR= getColorFromFloatRGBA(1.0,.0,1.0,1.0)
+
 function interpolateColor(color1, color2, factor) {
   return color1.lerp(color2, factor)
 }
@@ -400,6 +404,140 @@ function getColorFromDistance(distance, maxDistance, colorHexA, colorHexB) {
   color.lerp(new THREE.Color(colorHexA), normalizedDistance);
   return color;
 }
+
+function getFullColorFromDistance(dist, maxDist, colorFar, colorClose) {
+  const normDist = Math.min(dist, maxDist) / maxDist
+  return colorFar.map((i,e)=> e= e+colorClose[i]-e*normDist)
+}
+
+function getHexColorString(int, int32=true, incalpha=true){
+  const 
+    val= (int32 ? int : (int<<8) | 0xFF).toString(16).toUpperCase(),
+    result= '#' + "0".repeat(8 - val.length) + val
+  return incalpha ? result : result.slice(0,-2)
+}
+
+function getColorFromInt24(hex){ return getColorFromInt((hex>>8) | 0xFF)}
+function getColorFromInt(hex){
+  const
+    float32= [ BYTE_TO_FLOAT * (hex>>24&0xFF), BYTE_TO_FLOAT * (hex>>16&0xFF), BYTE_TO_FLOAT * (hex>>8&0xFF), BYTE_TO_FLOAT * (hex&0xFF)],
+    byte32= [ hex>>24&0xFF, hex>>16&0xFF, hex>>8&0xFF, hex&0xFF],
+    hex32= hex,
+    float24= float32.slice(0,-1),
+    byte24= byte32.slice(0,-1),
+    hex24= hex32>>8,
+    lum= 0.299 * float32[0] + 0.587 * float32[1] + 0.114 * float32[2]
+    return {float32, byte32, hex32, float24, byte24, hex24, lum}
+}
+
+function getColorFromFloatRGB(r, g, b){ return getColorFromFloatRGBA(r,g,b,1.0) }
+function getColorFromFloatRGBA(r, g, b, a){
+  const
+    float32= [r, g, b, a],
+    byte32= [ THREE.MathUtils.clamp(r*255, 0, 255), THREE.MathUtils.clamp(g*255, 0, 255), THREE.MathUtils.clamp(b*255, 0, 255), THREE.MathUtils.clamp(a*255, 0, 255) ],
+    hex32= byte32[0]<<24 | byte32[1]<<16 | byte32[2]<<8 | byte32[3],
+    float24= float32.slice(0,-1),
+    byte24= byte32.slice(0,-1),
+    hex24= hex32>>8,
+    lum= 0.299 * r + 0.587 * g + 0.114 * b
+  return {float32, byte32, hex32, float24, byte24, hex24, lum}
+}
+
+/** 
+ * parses a color string, returns a custom color object used along jbeams, ui and materials 
+ *  HEX: '#' followed by 3/4/6/8 HEX digits, as RGB, RGBA, RRGGBB or RRGGBBAA, ie: #00FF00FF
+ *  BYTE: 'b' followed by 3/4 decimal bytes separated by commas as in RRR,GGG,BBB,AAA, ie: b128,255,128,255
+ *  FLOAT: 'f' followed by 3/4 float values separated by commas as in R,G,B,A, ie: f0.5,1.0,0.5,1.0
+ *  returns the given color or opaque magenta if errored
+ * 
+ *  this func is an exact javascript reimplementation of the one i've implemented for a mod in the actual game's 
+ *  bdebugImpl.lua, used in custom node/beam dev-rendering modes that allow defining color properties for nodes/beams
+ * 
+ *  that way i can use it for the same exact purpose and get the same exact results while reading jbeam files
+ *  also, that way would be easier for devs to finally implement user-colors in jbeams, believe me, is super-useful
+ *  and all the code required is already been made
+*/
+function parseColor(col) {
+  if(col){
+    try {
+      const type= typeof(col)
+      if(type==='string'){
+        let strvalue= col.substring(1)
+        if(col[0]==='#'){
+          const 
+            len= strvalue.length,
+            short= len==3 || len==4
+          if(short){
+            let strduped= ""
+            for(i=0; i<len; i++) strduped+= strvalue[i] + strvalue[i]
+            strvalue= strduped
+          }
+          if(len==6) strvalue+="FF"
+          return getColorFromInt(parseInt(strvalue,16))
+        }
+        else if(strvalue.includes(',')){
+          const 
+            byte= col[0]==='b',
+            colsplit= strvalue.split(','),
+            chn= []
+          for(let i in colsplit) chn.push(THREE.MathUtils.clamp( byte ? BYTE_TO_FLOAT * parseInt(colsplit[i]) : parseFloat(colsplit[i])), 0, 1.0)
+          if(chn.length==3) chn.push(1.0)
+          return getColorFromFloatRGBA(...chn)
+        }
+      }
+      else if(type==='object') return getColorFromFloatRGBA(...[col.r, col.g, col.b, col.a])
+    }
+    catch(e) {
+      console.log("parseColor() => unable to parse color string:", col)
+      console.log(e)
+    }
+  }
+  return NULL_COLOR // MAGENTA = error
+}
+
+function getOpaqueColor(col) {
+  const _col= structuredClone(col)
+  _col.float[3]= 1.0,
+  _col.byte[3]= 255,
+  _col.hex= col.hex | 0x000000FF
+  return _col
+}
+
+function colorAdd(col1, col2){
+  const float= structuredClone(col1.float32)
+  for(i in float) float[i]= THREE.MathUtils.clamp(float[i] + col2.float32[i], .0, 1.0)
+  return getColorFromFloatRGBA(...float)
+}
+
+function colorSub(col1, col2){
+  const float= structuredClone(col1.float32)
+  for(i in float) float[i]= THREE.MathUtils.clamp(float[i] - col2.float32[i], .0, 1.0)
+  return getColorFromFloatRGBA(...float)
+}
+
+function colorMul(col1, col2){
+  const float= structuredClone(col1.float32)
+  for(i in float) float[i]*= col2.float32[i]
+  return getColorFromFloatRGBA(...float)
+}
+
+function colorScale(col1, factor){
+  const float= structuredClone(col1.float32)
+  for(i in float) float[i]*= factor
+  return getColorFromFloatRGBA(...float)
+}
+
+function colorLerp(col1, col2, factor) {
+  let diff= 0
+  for(i in data.float32) {
+    diff= col.float32[i] - data.float32[i]
+    data.float32[i]+= diff*factor
+  }
+  return getColorFromFloatRGBA(...float)
+}
+
+// simple 0.0-1.0 to 0%-100% formatter
+function formatter_FloatToPercent(value) { return `${(value*100 | 0)}%` }
 
 class Tooltip {
   constructor(scene, camera) {

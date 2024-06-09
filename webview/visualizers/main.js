@@ -1,4 +1,5 @@
 export function init() {
+  ctx.visualizersView.init()
   ctx.visualizersNode.init()
   ctx.visualizersBeam.init()
   ctx.visualizersMesh.init()
@@ -6,6 +7,7 @@ export function init() {
 }
 
 export function dispose() {
+  ctx.visualizersView.dispose()
   ctx.visualizersNode.dispose()
   ctx.visualizersBeam.dispose()
   ctx.visualizersMesh.dispose()
@@ -13,6 +15,7 @@ export function dispose() {
 }
 
 export function onConfigChanged() {
+  ctx.visualizersView.onConfigChanged()
   ctx.visualizersNode.onConfigChanged()
   ctx.visualizersBeam.onConfigChanged()
   ctx.visualizersMesh.onConfigChanged()
