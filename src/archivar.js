@@ -12,8 +12,10 @@ const vscode = require('vscode');
 
 const sjsonParser = require('./json/sjsonParser');
 const tableSchema = require('./json/tableSchema');
+const syntaxChecker = require('./jbeam/syntaxChecker');
 const path = require('path')
 const fs = require('fs');
+const os = require('os');
 const utilsExt = require('./utilsExt');
 
 let jbeamFileData = {} // the root that holds all data
@@ -36,7 +38,7 @@ function fileExists(filePath) {
   }
 }
 
-function processJbeamFile(filename, doDiagnostics=true) {
+function processJbeamFile(filename) {
   if(!fileExists(filename)) return
   const namespace = utilsExt.getNamespaceFromFilename(rootPath, filename)
   let diagnosticsList = []
@@ -45,25 +47,18 @@ function processJbeamFile(filename, doDiagnostics=true) {
   if(contentTextUtf8) {
     let dataBundle
     try {
-      if (doDiagnostics) {
-        dataBundle = sjsonParser.decodeWithMetaWithDiagnostics(contentTextUtf8, filename, false)
-        if(dataBundle) {
-          diagnosticsList.push(...dataBundle.diagnosticsList)
-        }
-      }
-      else {
-        dataBundle = sjsonParser.decodeWithMeta(contentTextUtf8, filename, false)
+      dataBundle = sjsonParser.decodeWithMetaWithDiagnostics(contentTextUtf8, filename, false)
+      if(dataBundle) {
+        diagnosticsList.push(...dataBundle.diagnosticsList)
       }
     } catch (e) {
-      if (doDiagnostics) {
-        const pos = new vscode.Position(0, 0)
-        const diagnostic = new vscode.Diagnostic(
-          new vscode.Range(pos, pos),
-          `Error parsing json file ${filename}. Exception: ${e.message}`,
-          vscode.DiagnosticSeverity.Error
-        );
-        diagnosticsList.push(diagnostic);
-      }
+      const pos = new vscode.Position(0, 0)
+      const diagnostic = new vscode.Diagnostic(
+        new vscode.Range(pos, pos),
+        `Error parsing json file ${filename}. Exception: ${e.message}`,
+        vscode.DiagnosticSeverity.Error
+      );
+      diagnosticsList.push(diagnostic);
     }
     if(dataBundle && diagnosticsList.length === 0) {
       if(!jbeamFileData[namespace]) {
@@ -71,22 +66,20 @@ function processJbeamFile(filename, doDiagnostics=true) {
       }
 
       let [tableInterpretedData, diagnosticsTable] = tableSchema.processAllParts(dataBundle.data)
-      if (doDiagnostics) {
-        for (const w of diagnosticsTable) {
-          // w[0] = type: error/warning
-          // w[1] = message
-          // w[2] = range = [linefrom, positionfrom, lineto, positionto]
-          let linefrom = 0, positionfrom = 0, lineto = 0, positionto = 0
-          if (w[2]) {
-            linefrom = w[2][0], positionfrom = w[2][1], lineto = w[2][2], positionto = w[2][3]
-          }
-          const diagnostic = new vscode.Diagnostic(
-            new vscode.Range(new vscode.Position(linefrom, positionfrom), new vscode.Position(lineto, positionto)),
-            w[1],
-            w[0] == 'warning' ? vscode.DiagnosticSeverity.Warning : vscode.DiagnosticSeverity.Error
-          );
-          diagnosticsList.push(diagnostic);
+      for (const w of diagnosticsTable) {
+        // w[0] = type: error/warning
+        // w[1] = message
+        // w[2] = range = [linefrom, positionfrom, lineto, positionto]
+        let linefrom = 0, positionfrom = 0, lineto = 0, positionto = 0
+        if (w[2]) {
+          linefrom = w[2][0], positionfrom = w[2][1], lineto = w[2][2], positionto = w[2][3]
         }
+        const diagnostic = new vscode.Diagnostic(
+          new vscode.Range(new vscode.Position(linefrom, positionfrom), new vscode.Position(lineto, positionto)),
+          w[1],
+          w[0] == 'warning' ? vscode.DiagnosticSeverity.Warning : vscode.DiagnosticSeverity.Error
+        );
+        diagnosticsList.push(diagnostic);
       }
 
       dataBundle.tableInterpretedData = tableInterpretedData
@@ -98,11 +91,11 @@ function processJbeamFile(filename, doDiagnostics=true) {
       let partNames = Object.keys(dataBundle.data).filter(key => key !== '__meta')
       for(let partName of partNames) {
         const partRaw = dataBundle.data[partName]
-        if(partRaw) {
+        if(typeof partRaw?.__meta === "object") {
           partRaw.__meta.origin = filename
         }
         const partInterpreted = dataBundle.tableInterpretedData[partName]
-        if(partInterpreted) {
+        if(typeof partInterpreted?.__meta === "object") {
           partInterpreted.__meta.origin = filename
         }
         if(!partData[namespace]) {
@@ -113,17 +106,15 @@ function processJbeamFile(filename, doDiagnostics=true) {
       }
     }
   } else {
-    if (doDiagnostics) {
-      const pos = new vscode.Position(0, 0)
-      const diagnostic = new vscode.Diagnostic(
-        new vscode.Range(pos, pos),
-        `Error parsing json file ${filename}`,
-        vscode.DiagnosticSeverity.Error
-      );
-      diagnosticsList.push(diagnostic);
-    }
+    const pos = new vscode.Position(0, 0)
+    const diagnostic = new vscode.Diagnostic(
+      new vscode.Range(pos, pos),
+      `Error parsing json file ${filename}`,
+      vscode.DiagnosticSeverity.Error
+    );
+    diagnosticsList.push(diagnostic);
   }
-  archivarDiagnostics.set(vscode.Uri.file(filename), diagnosticsList);
+  syntaxChecker.jbeamDiagnostics.set(vscode.Uri.file(filename), diagnosticsList);
   return true
 }
 
@@ -148,11 +139,9 @@ const debounceTime = 50 // milliseconds
 
 function onFileChangedDebounced(filename) {
   //console.log('onFileChanged', changeType, filename)
-  // Don't perform diagnostics on the open file, as syntaxChecker performs the diagnosis, to avoid duplicate error messages
-  let doDiagnostics = filename != vscode.window.activeTextEditor?.document.fileName
   if(path.extname(filename) == '.jbeam') {
     removeJbeamFileData(filename)
-    processJbeamFile(filename, doDiagnostics)
+    processJbeamFile(filename)
     //console.log(`Part count diff after updating file: ${partCounter}: ${filename}`)
     statusBar.text = `$(project) ${jbeamFileCounter} JBeam files $(repo) ${partCounter} parts`
   }
@@ -185,7 +174,6 @@ function loadJbeamFiles() {
   }
 
   const vehiclesPath = vscode.Uri.file(path.join(rootPath, '/vehicles/')).fsPath
-  let openFileName = vscode.window.activeTextEditor?.document.fileName
   jbeamFileCounter = 0
   partCounter = 0
 
@@ -194,8 +182,7 @@ function loadJbeamFiles() {
   findFilesPromises.push(vscode.workspace.findFiles(new vscode.RelativePattern(vehiclesPath, '**/*.jbeam'), null).then(files => {
     statusBar.text = `Parsing ${files.length} jbeam files ...`
     for(let file of files) {
-      jbeamFileCounter++
-      processJbeamFile(file.fsPath, file.fsPath != openFileName)
+      processJbeamFile(file.fsPath)
     }
   }));
   Promise.all(findFilesPromises).then(allFilesArrays => {
@@ -207,7 +194,9 @@ function loadJbeamFiles() {
   })
 
   // now watch for changes
-  fs.watch(rootPath, {recursive: true}, onFileChanged)
+  const isLinux = os.platform() === 'linux';
+  const watchOptions = isLinux ? {} : { recursive: true };
+  fs.watch(rootPath, watchOptions, onFileChanged)
 }
 
 function activate(context) {
@@ -217,17 +206,22 @@ function activate(context) {
 function deactivate() {
 }
 
-function findNodeByNameInAllParts(nodeName) {
-  for(let namespace in partData) {
-    for(let partName in partData[namespace]) {
-      let part = partData[namespace][partName].interpreted
-      //console.log(`${namespace} : ${partName}`)
-      if(part.nodes && part.nodes[nodeName]) {
-        let node = part.nodes[nodeName]
-        node.__meta.partOrigin = partName
-        node.__meta.partNamespace = namespace
-        node.__meta.origin = part.__meta.origin
-        return node
+function findNodeByNameInAllParts(namespace, nodeName) {
+  // TODO: find node in "vehicles/common" folder
+  // but need the ability to select the part to get the node from if couldn't find node initially in "vehicles/namespace" folder
+  let namespaces = [namespace] //[namespace, '/vehicles/common']
+  for (let n of namespaces) {
+    if (n in partData) {
+      for(let partName in partData[n]) {
+        let part = partData[n][partName].interpreted
+        //console.log(`${n} : ${partName}`)
+        if(part.nodes && part.nodes[nodeName]) {
+          let node = part.nodes[nodeName]
+          node.__meta.partOrigin = partName
+          node.__meta.partNamespace = n
+          node.__meta.origin = part.__meta.origin
+          return node
+        }
       }
     }
   }

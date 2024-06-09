@@ -1,3 +1,6 @@
+const nodeNormalSize = 0.05
+const nodeSelectedSize = 0.1
+
 let jbeamData = null
 let currentPartName = null
 let uri = null
@@ -45,7 +48,11 @@ function updateLabels() {
   for (let i = 0; i < pointsCache.length; i++) {
     if(selectedNodeIndices && !selectedNodeIndices.includes(i)) continue
     const node = pointsCache[i]
-    tooltips.push({ pos3d: node.pos3d, name: `${node.name}`}) //  - ${node.nodeWeight}
+    let text = node.name
+    if (node.virtual) {
+      text += '(v)'
+    }
+    tooltips.push({ pos3d: node.pos3d, name: text}) //  - ${node.nodeWeight}
   }
   if(tooltips.length === 0) return
 
@@ -74,7 +81,7 @@ function focusNodes(nodesArrToFocus, triggerEditor = true) {
     const node = pointsCache[i]
     if(selectedNodeIndices.includes(i)) {
       alphasAttribute.setX(i, 1)
-      sizesAttribute.setX(i, 0.11)
+      sizesAttribute.setX(i, nodeSelectedSize)
       colorsAttribute.setXYZ(i, 1, 0, 1)
       sumX += node.pos[0]
       sumY += node.pos[1]
@@ -83,8 +90,12 @@ function focusNodes(nodesArrToFocus, triggerEditor = true) {
       continue
     }
     alphasAttribute.setX(i, 0.4)
-    sizesAttribute.setX(i, 0.03)
-    colorsAttribute.setXYZ(i, 1, 0.65, 0);
+    sizesAttribute.setX(i, nodeNormalSize)
+    if(node.virtual) {
+      colorsAttribute.setXYZ(i, 0, 0, 1);
+    } else {
+      colorsAttribute.setXYZ(i, 1, 0.65, 0);
+    }
   }
   alphasAttribute.needsUpdate = true;
   colorsAttribute.needsUpdate = true;
@@ -102,7 +113,7 @@ function focusNodes(nodesArrToFocus, triggerEditor = true) {
 
   if(selectedNodeIndices.length == 0) selectedNodeIndices = null
 
-  if(ncount > 0) {
+  if(centerViewOnSelectedNodes && ncount > 0) {
     let nodesCenterPos = new THREE.Vector3(sumX / ncount, sumY / ncount, sumZ / ncount)
     moveCameraCenter(nodesCenterPos)
   }
@@ -235,10 +246,15 @@ function updateNodeViz(moveCamera) {
   let vertexColors = []
   let vertexSizes = []
   // Fill arrays with data for each node
-  for (let i = 0; i < nodeCounter; i++) {
+  for (let i = 0; i < pointsCache.length; i++) {
+    const node = pointsCache[i]
     vertexAlphas.push(1)
-    vertexColors.push(1, 0.65, 0)
-    vertexSizes.push(0.05)
+    if(node.virtual) {
+      vertexColors.push(0, 0, 1)
+    } else {
+      vertexColors.push(1, 0.65, 0)
+    }
+    vertexSizes.push(nodeNormalSize)
   }
 
   let nodesGeometry
@@ -276,7 +292,7 @@ function updateNodeViz(moveCamera) {
           vColor = color;
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
           if (isOrthographic) {
-            gl_PointSize = size * scale; // Fixed size for orthographic
+            gl_PointSize = size * scale * 0.5; // Fixed size for orthographic
           } else {
             gl_PointSize = size * (scale / -mvPosition.z); // Perspective size adjustment
           }
@@ -311,7 +327,7 @@ function updateNodeViz(moveCamera) {
   updateLabels()
 }
 
-function onMouseDown(event) {
+function onMouseDoubleClick(event) {
   const rect = renderer.domElement.getBoundingClientRect();
   const mouse2D = new THREE.Vector2(
     event.clientX - rect.left,
@@ -357,10 +373,15 @@ function resetNodeFocus() {
   const sizesAttribute = pointsObject.geometry.getAttribute('size');
 
   for (let i = 0; i < pointsCache.length; i++) {
+    let node = pointsCache[i]
     if(selectedNodeIndices && selectedNodeIndices.includes(i)) continue
     alphasAttribute.setX(i, 0.3)
-    sizesAttribute.setX(i, 0.03)
-    colorsAttribute.setXYZ(i, 1, 0.65, 0);
+    sizesAttribute.setX(i, nodeNormalSize)
+    if(node.virtual) {
+      colorsAttribute.setXYZ(i, 0, 0, 1);
+    } else {
+      colorsAttribute.setXYZ(i, 1, 0.65, 0);
+    }
   }
   alphasAttribute.needsUpdate = true;
   colorsAttribute.needsUpdate = true;
@@ -390,8 +411,8 @@ function onMouseMove(event) {
   // Define interaction parameters
   const alphaDecay = 0.01;
   const maxDistance = 1;
-  const minSize = 0.05; // Minimum size for nodes
-  const maxSize = 0.2;  // Maximum size for nodes
+  //const minSize = 0.05; // Minimum size for nodes
+  //const maxSize = 0.2;  // Maximum size for nodes
 
   // Get attributes for batch updates
   const alphasAttribute = pointsObject.geometry.getAttribute('alpha');
@@ -406,18 +427,18 @@ function onMouseMove(event) {
 
     // Calculate alpha and size based on distance
     alphasAttribute.setX(i, 1.0 - (normalizedDistance * alphaDecay));
-    let size = (1.0 - (normalizedDistance * 0.7)) * 0.05;
-    sizesAttribute.setX(i, Math.max(minSize, Math.min(size, maxSize))); // Clamp size between minSize and maxSize
+    //let size = (1.0 - (normalizedDistance * 0.7)) * 0.05;
+    //sizesAttribute.setX(i, Math.max(minSize, Math.min(size, maxSize))); // Clamp size between minSize and maxSize
 
     // Adjust color based on distance
-    const color = getColorFromDistance(distance, maxDistance, 0xFFA500, 0xddA500);
+    const color = point.virtual ? getColorFromDistance(distance, maxDistance, 0x0000dd, 0x0000FF) : getColorFromDistance(distance, maxDistance, 0xddA500, 0xFFA500);
     colorsAttribute.setXYZ(i, color.r, color.g, color.b);
   });
 
   // Flag attributes as needing an update
   alphasAttribute.needsUpdate = true;
   colorsAttribute.needsUpdate = true;
-  sizesAttribute.needsUpdate = true;
+  //sizesAttribute.needsUpdate = true;
 }
 
 
@@ -452,14 +473,14 @@ function onMouseOut(event) {
 
 export function init() {
   window.addEventListener('message', onReceiveMessage);
-  window.addEventListener('mousedown', onMouseDown, false);
+  window.addEventListener('dblclick', onMouseDoubleClick, false);
   window.addEventListener('mousemove', onMouseMove, false);
   window.addEventListener('mouseout', onMouseOut, false);
 }
 
 export function dispose() {
   window.removeEventListener('message', onReceiveMessage);
-  window.removeEventListener('mousedown', onMouseDown);
+  window.removeEventListener('dblclick', onMouseDoubleClick);
   window.removeEventListener('mousemove', onMouseMove);
   window.removeEventListener('mouseout', onMouseOut)
   if(pointsObject) {

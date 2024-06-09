@@ -76,6 +76,7 @@ const settings = {
   // 3d viewport
   perspective: true,
   view: 'Isometric',
+  centerViewOnSelectedNodes: false,
   backgroundColor: parseColor(ctx?.config?.sceneView?.viewport?.bgcolor ?? "#aaaaaa").hex32,
   floorColor: parseColor(ctx?.config?.sceneView?.viewport?.floorcolor ?? "#808080").hex32,
   // 3d mesh
@@ -119,6 +120,10 @@ export async function init() {
       orbitControls.enableRotate = false
     }
     orbitControls.object = camera; // Update controls to new camera
+  })
+
+  section_3dviewport.addBinding( settings, 'centerViewOnSelectedNodes', {label: 'Focus Selected Nodes'}).on('change', function(ev) {
+    centerViewOnSelectedNodes = ev.value
   })
 
   section_3dviewport.addBinding(settings, 'view', {
